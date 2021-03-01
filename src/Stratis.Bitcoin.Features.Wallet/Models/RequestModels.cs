@@ -473,7 +473,16 @@ namespace Stratis.Bitcoin.Features.Wallet.Models
             }
         }
     }
-
+    
+    /// <summary>
+    /// A class containing the necessary parameters for a build transactions to self request.
+    /// </summary>
+    public class SendTransactionsToSelfRequest : RequestModel
+    {
+        [Required(ErrorMessage = "Field required.")]
+        public int Count { get; set; }
+    }
+    
     /// <summary>
     /// A class containing the necessary parameters for a send transaction request.
     /// </summary>

@@ -462,6 +462,43 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
                 async (req, token) => Json(await this.walletService.SendTransaction(req, token)));
         }
 
+
+        private const string WalletName = "FloodWallet";
+        private const string WalletPassword = "4815162342";
+
+        /// <summary>
+        /// Sends a transaction that has already been built.
+        /// Use the /api/Wallet/build-transaction call to create transactions.
+        /// </summary>
+        /// <param name="request">An object containing the necessary parameters used to a send transaction request.</param>
+        /// <param name="cancellationToken">The Cancellation Token</param>
+        /// <returns>A JSON object containing information about the sent transaction.</returns>
+        [Route("send-transactions-to-self")]
+        [HttpPost]
+        [ProducesResponseType((int)HttpStatusCode.OK)]
+        [ProducesResponseType((int)HttpStatusCode.BadRequest)]
+        public async Task<IActionResult> SendTransactionsToSelf([FromBody] SendTransactionsToSelfRequest request,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            List<string> unusedAddresses = this.walletManager.GetUnusedAddresses(new WalletAccountReference(WalletName, "account 0"), request.Count).Select(x => x.Bech32Address).ToList();
+            
+
+
+
+            // TODO build txes
+
+            //BuildTransactionRequest request, CancellationToken cancellationToken = default(CancellationToken)
+            //await this.walletService.BuildTransaction(req, token)
+
+
+
+            // TODO send txes
+
+
+            return this.Ok("DONE");
+        }
+
+
         /// <summary>
         /// Lists all the files found in the database
         /// </summary>
