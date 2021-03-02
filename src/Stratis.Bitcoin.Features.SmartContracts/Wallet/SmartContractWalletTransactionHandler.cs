@@ -44,9 +44,9 @@ namespace Stratis.Bitcoin.Features.SmartContracts.Wallet
 
             this.AddRecipients(context);
             this.AddOpReturnOutput(context);
-            this.AddCoins(context);
+            this.AddCoins(context); // TODO SLOW
             this.FindChangeAddress(context);
-            this.AddFee(context);
+            this.AddFee(context);  // TODO SLOW
         }
 
         /// <summary>

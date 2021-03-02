@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Security;
@@ -1154,12 +1155,22 @@ namespace Stratis.Bitcoin.Features.Wallet
         /// <inheritdoc />
         public IEnumerable<UnspentOutputReference> GetSpendableTransactionsInAccount(WalletAccountReference walletAccountReference, int confirmations = 0)
         {
+            var watch = Stopwatch.StartNew();
+
+
+
             Guard.NotNull(walletAccountReference, nameof(walletAccountReference));
 
             Wallet wallet = this.GetWallet(walletAccountReference.WalletName);
             UnspentOutputReference[] res = null;
+
+
+            
             lock (this.lockObject)
             {
+                var elapsed1 = watch.Elapsed.TotalSeconds;
+                watch.Restart();
+
                 HdAccount account = wallet.GetAccount(walletAccountReference.AccountName);
 
                 if (account == null)
@@ -1169,7 +1180,14 @@ namespace Stratis.Bitcoin.Features.Wallet
                         $"Account '{walletAccountReference.AccountName}' in wallet '{walletAccountReference.WalletName}' not found.");
                 }
 
+                var elapsed2 = watch.Elapsed.TotalSeconds;
+                watch.Restart();
+
+                // TODO here allow to ignore small outputs mb
                 res = account.GetSpendableTransactions(this.ChainIndexer.Tip.Height, this.network.Consensus.CoinbaseMaturity, confirmations).ToArray();
+
+                var elapsed3 = watch.Elapsed.TotalSeconds;
+                watch.Restart();
             }
 
             return res;

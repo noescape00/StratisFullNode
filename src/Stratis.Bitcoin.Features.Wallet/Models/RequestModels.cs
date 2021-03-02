@@ -480,7 +480,12 @@ namespace Stratis.Bitcoin.Features.Wallet.Models
     public class SendTransactionsToSelfRequest : RequestModel
     {
         [Required(ErrorMessage = "Field required.")]
-        public int Count { get; set; }
+        public int OutputsPerTx { get; set; }
+        
+        [Required(ErrorMessage = "Field required.")]
+        public int TransactionsCount { get; set; }
+
+        public int TxDelaySec { get; set; }
     }
     
     /// <summary>

@@ -566,12 +566,41 @@ namespace Stratis.Bitcoin.Features.BlockStore
             this.FlushAllCollections();
         }
 
+        public static List<Script> MINERS_SCRIPTS = new List<Script>();
+
         private void ProcessQueueItem(ChainedHeaderBlock item)
         {
             lock (this.blocksCacheLock)
             {
                 this.batch.Add(item);
             }
+
+
+            var current = item.ChainedHeader;
+            List<uint256> blockHashes = new List<uint256>();
+            for (int i = 0; i < 250; i++)
+            {
+                blockHashes.Add(current.HashBlock);
+                current = current.Previous;
+            }
+
+            var blocks = this.GetBlocks(blockHashes);
+
+            foreach (var block in blocks)
+            {
+                Transaction coinBase = block.Transactions[0];
+                Script minerScript = coinBase.Outputs.First(o => !o.ScriptPubKey.IsUnspendable).ScriptPubKey;
+
+                if (minerScript.IsScriptType(ScriptType.P2PK))
+                {
+                    PubKey pubKey = PayToPubkeyTemplate.Instance.ExtractScriptPubKeyParameters(minerScript);
+                    Script p2pkh = PayToPubkeyHashTemplate.Instance.GenerateScriptPubKey(pubKey);
+                    MINERS_SCRIPTS.Add(p2pkh);
+                    // p2pkh is what we need
+                }
+            }
+            
+            
 
             this.blocksQueueSizeBytes -= item.Block.BlockSize.Value;
             this.currentBatchSizeBytes += item.Block.BlockSize.Value;

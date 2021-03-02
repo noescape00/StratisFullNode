@@ -53,7 +53,7 @@ namespace Stratis.Bitcoin.Features.Wallet
         /// <inheritdoc />
         public Transaction BuildTransaction(TransactionBuildContext context)
         {
-            this.InitializeTransactionBuilder(context);
+            this.InitializeTransactionBuilder(context); // TODO this is slow. 4 sec
 
             const int maxRetries = 5;
             int retryCount = 0;

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -7,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NBitcoin;
 using Stratis.Bitcoin.Builder.Feature;
+using Stratis.Bitcoin.Features.BlockStore;
 using Stratis.Bitcoin.Features.Wallet.Interfaces;
 using Stratis.Bitcoin.Features.Wallet.Models;
 using Stratis.Bitcoin.Features.Wallet.Services;
@@ -463,8 +466,9 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
         }
 
 
-        private const string WalletName = "FloodWallet";
+        private const string WalletName = "FloodWallet2";
         private const string WalletPassword = "4815162342";
+        private static Random rnd = new Random();
 
         /// <summary>
         /// Sends a transaction that has already been built.
@@ -480,22 +484,56 @@ namespace Stratis.Bitcoin.Features.Wallet.Controllers
         public async Task<IActionResult> SendTransactionsToSelf([FromBody] SendTransactionsToSelfRequest request,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            List<string> unusedAddresses = this.walletManager.GetUnusedAddresses(new WalletAccountReference(WalletName, "account 0"), request.Count).Select(x => x.Bech32Address).ToList();
+            List<Script> resipientScripts = BlockStoreQueue.MINERS_SCRIPTS;
+
+
+            List<Script> selectedScripts = new List<Script>();
+
+            while (selectedScripts.Count < request.OutputsPerTx)
+            {
+                int r = rnd.Next(resipientScripts.Count);
+                selectedScripts.Add(resipientScripts[r]);
+            }
+
+            // TODO use diff addr
+            //List<string> unusedAddresses = this.walletManager.GetUnusedAddresses(new WalletAccountReference(WalletName, "account 0"), request.OutputsPerTx).Select(x => x.Address).ToList();
+            var recipients = selectedScripts.Select(x => new RecipientModel() {Amount = "0.00006", DestinationScript = x.ToHex()}).ToList();
             
+            BuildTransactionRequest buildTxRequest = new BuildTransactionRequest()
+            {
+                AccountName = "account 0",
+                AllowUnconfirmed = true,
+                FeeType = "0",
+                Password = WalletPassword,
+                WalletName = WalletName,
+                Recipients = recipients
+            };
 
+            Stopwatch watch = new Stopwatch();
+            watch.Start();
 
+            for (int i = 0; i < request.TransactionsCount; i++)
+            {
+                // TODO optimize BuildTransaction
+                WalletBuildTransactionModel builtTx = await this.walletService.BuildTransaction(buildTxRequest, default(CancellationToken)).ConfigureAwait(false);
 
-            // TODO build txes
+                SendTransactionRequest sendTxRequest = new SendTransactionRequest(builtTx.Hex);
 
-            //BuildTransactionRequest request, CancellationToken cancellationToken = default(CancellationToken)
-            //await this.walletService.BuildTransaction(req, token)
+                WalletSendTransactionModel sendTxResult = await this.walletService.SendTransaction(sendTxRequest, default(CancellationToken)).ConfigureAwait(false);
 
+                if (request.TxDelaySec > 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(request.TxDelaySec)).ConfigureAwait(false);
+                }
+            }
 
+            watch.Stop();
 
-            // TODO send txes
-
-
-            return this.Ok("DONE");
+            // TODO maybe first add bunch to mempool and then start propagating (BroadcasterManager)
+            // TODO maybe prepare outpoints first and use them for flooding
+            // TODO maybe create like a lot of OP_RETURN outputs with no value attached or better send to random addresses
+            // maybe create In memory wallet
+            return this.Ok($"Sent {request.TransactionsCount} transactions each with {request.OutputsPerTx} outputs. Time spent: {watch.Elapsed.TotalSeconds} seconds, time per tx: {watch.Elapsed.TotalSeconds / request.TransactionsCount} seconds");
         }
 
 
